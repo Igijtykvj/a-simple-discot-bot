@@ -7,7 +7,7 @@ import dataclasses as dc
 logging.basicConfig(format="%(asctime)s [%(levelname)s] (%(name)s): %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S",
                     handlers=[logging.FileHandler("bot.log", encoding='utf-8', mode='w'), logging.StreamHandler()],
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger('discord')
 @dc.dataclass
@@ -46,66 +46,82 @@ class Helper(d.Client):
     def __init__(self, *, intents=d.Intents.default(), config: Config):
         logger.debug("Creating client")
         self.config = config
-
-        intents.message_content = True
-        intents.reactions = True
         intents.guilds = True
+        intents.members = True
+        
         super().__init__(intents=intents)
         self.tree = d.app_commands.CommandTree(self)
 
     def botOwnerCheck(self, interaction: d.Interaction):
         result = interaction.user.id == self.config.adminID
-        logger.debug(f"botOwnerCheck for user {interaction.user.id} = {result}")
+        logger.debug(f"botOwnerCheck for user {interaction.user.name} ({interaction.user.id}) = {result}")
         return result
     
     async def setup_hook(self): 
-        self.guild = self.get_guild(self.config.guildID)
-        logger.debug("Setting up slash commands")
         logger.info("Running setup_hook")
+        logger.info("Fetching guild...")
+
+        self.guild = await self.fetch_guild(self.config.guildID)
+
+        logger.info(f"Guild: {self.guild.name} ({self.guild.id})")
+        logger.debug("Setting up slash commands")
+
         @self.tree.command(name="register", description="Register channel for the bot to send messages to.")
+        @d.app_commands.guilds(d.Object(id=self.config.guildID))
         @d.app_commands.describe(channel="Channel to send messages to.")
         @d.app_commands.check(self.botOwnerCheck)
         async def register(interaction: d.Interaction, channel: d.TextChannel):
-            logger.debug(f"Received /register from {interaction.user} for channel {channel}")
+            logger.debug(f"Received /register from {interaction.user.name} ({interaction.user.id}) for channel {channel.name} ({channel.id})")
             if channel.guild.id != self.config.guildID:
                 await interaction.response.send_message(f"Channel is not in the correct guild.", ephemeral=True)
+                logger.debug(f"Registered channel: {channel.name} ({channel.id})")
                 logger.warning(f"Registered a channel that is not in the correct guild.")
                 return
             if channel.id == self.config.channelID:
                 await interaction.response.send_message(f"Channel is already registered.", ephemeral=True)
+                logger.debug(f"Registered channel: {channel.name} ({channel.id})")
                 logger.info(f"Registered a channel that is already registered.")
                 return
             await interaction.response.send_message(f"Registered {channel.mention} for messages.")
-            logger.info(f"Registered {channel.mention} for messages.")
+            logger.info(f"Registered {channel.name} ({channel.id}) for messages.")
             self.config.channelID = channel.id
             await self.on_channelRegistered(channel)
 
         @self.tree.command(name="pingtoggle", description="Toggle pinging.")
+        @d.app_commands.guilds(d.Object(id=self.config.guildID))
         @d.app_commands.check(self.botOwnerCheck)
         async def pingtoggle(interaction: d.Interaction):
-            logger.debug(f"Received /pingtoggle from {interaction.user}")
+            logger.debug(f"Received /pingtoggle from {interaction.user.name} ({interaction.user.id})")
             await interaction.response.send_message(f"Pinging is now {'enabled' if not self.config.isPing else 'disabled'}.")
             logger.info(f"Toggled pinging to {'enabled' if not self.config.isPing else 'disabled'}.")
             self.config.isPing = not self.config.isPing
             await self.on_pingToggle()
 
         @self.tree.command(name="setpingrole", description="Set role to be pinged.")
+        @d.app_commands.guilds(d.Object(id=self.config.guildID))
         @d.app_commands.describe(role="Role to be pinged.")
         @d.app_commands.check(self.botOwnerCheck)
         async def setpingrole(interaction: d.Interaction, role: d.Role):
-            logger.debug(f"Received /setpingrole from {interaction.user} for role {role}")
+            logger.debug(f"Received /setpingrole from {interaction.user.name} ({interaction.user.id}) for role {role.name} ({role.id})")
             if role > self.guild.me.top_role:
                 await interaction.response.send_message(f"Role is too high for me to manage. Please set a lower role.")
                 logger.warning(f"Set a role that is too high to manage.")
                 return
+            if role.id == self.config.roleID:
+                await interaction.response.send_message(f"Role is already set.", ephemeral=True)
+                logger.info(f"Set a role that is already set.")
+                return
             await interaction.response.send_message(f"Set {role.mention} to be pinged.")
-            logger.info(f"Set {role.mention} to be pinged.")
+            logger.info(f"Set {role.name} ({role.id}) to be pinged.")
+            if not self.config.channelID:
+                await interaction.response.send_message(f"These is no channel registered for messages.", ephemeral=True)
             self.config.roleID = role.id
             await self.on_roleRegistered()
 
         @self.tree.command(name="roletoggle", description="Gain/remove ping role.")
+        @d.app_commands.guilds(d.Object(id=self.config.guildID))
         async def roletoggle(interaction: d.Interaction):
-            logger.debug(f"Received /roletoggle from {interaction.user}")
+            logger.debug(f"Received /roletoggle from {interaction.user.name} ({interaction.user.id})")
             if not self.config.roleID:
                 await interaction.response.send_message(f"Role hasn't been set yet.", ephemeral=True)
                 logger.info(f"{interaction.user.name} tried to use roletoggle but no role has been set.")
@@ -125,24 +141,34 @@ class Helper(d.Client):
             
             if role in interaction.user.roles:
                 await interaction.user.remove_roles(role)
+                logger.info(f"Removed {role.name} from {interaction.user.name}")
                 await interaction.response.send_message(f"Removed {role.mention} from you.", ephemeral=True)
             else:
                 await interaction.user.add_roles(role)
+                logger.info(f"Added {role.name} to {interaction.user.name}")
                 await interaction.response.send_message(f"Added {role.mention} to you.", ephemeral=True)
-
+        
+        logger.info("Syncing slash commands")
         await self.tree.sync(guild=d.Object(id=self.config.guildID))
+        logger.info("Slash commands synced")
 
     async def on_ready(self):
         logger.info(f"Bot ready as {self.user} (ID: {self.user.id})")
-        
-    
-    async def on_pingToggle(self):
-        pass
+        logger.info(f"Re-fetching guild...")
+        self.guild = self.get_guild(self.config.guildID)
+        logger.info(f"Guild: {self.guild.name} ({self.guild.id})")
 
     async def on_channelRegistered(self, channel: d.TextChannel):
+        self.config.dump()
+        await channel.send("I'm here because this channel was registered for messages.")
         pass
 
     async def on_roleRegistered(self):
+        self.config.dump()
+        channel = self.get_channel(self.config.channelID)
+        role = self.guild.get_role(self.config.roleID)
+        if channel:
+            await channel.send(f"{role.mention} was set for pings.")
         pass
 
     def publicIpReq(self):
@@ -188,6 +214,7 @@ def configInit(config: Config):
 
 async def main():
     logger.info("Bot is starting up...")
+    client = None
     try:
         config = Config.load()
         if not all([config.token, config.adminID, config.guildID]):
@@ -200,6 +227,10 @@ async def main():
     except Exception as e:
         logger.exception("Unhandled exception during bot execution")
     finally:
-        await client.close()
+        if client:
+            await client.close()
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    logger.info("Bot shutdown by user")
