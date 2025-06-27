@@ -27,11 +27,10 @@ class Config:
     isPing: bool = False
     roleID: int = 0
 
-    _filename: str = dc.field(default='botConfig.json', init=False, repr=False, compare=False)
+    __filename__: str = 'botConfig.json'
 
     @classmethod
-    def load(cls, filename: str = None):
-        filename = filename or cls._filename.default
+    def load(cls, filename: str = __filename__):
         if os.path.exists(filename):
             logger.info(f"Loading config from {filename}")
             with open(filename, 'r', encoding='utf-8') as f:
@@ -41,20 +40,20 @@ class Config:
             filtered_data = {k: v for k, v in data.items() if k in init_fields}
 
             obj = cls(**filtered_data)
-            obj._filename = filename
+            obj.__filename__ = filename
             logger.debug(f"Loaded config: {obj}")
             return obj
         else:
             logger.info(f"Config file {filename} not found. Returning default values.")
             obj = cls()
-            obj._filename = filename
+            obj.__filename__ = filename
             return obj
 
 
     def dump(self):
-        logger.info(f"Dumping config to {self._filename}")
+        logger.info(f"Dumping config to {self.__filename__}")
         data_to_dump = {f.name: getattr(self, f.name) for f in dc.fields(self) if f.init}
-        with open(self._filename, 'w', encoding='utf-8') as f:
+        with open(self.__filename__, 'w', encoding='utf-8') as f:
             json.dump(data_to_dump, f, indent=4)
         logger.debug(f"Dumped config: {data_to_dump}")
 
@@ -73,6 +72,8 @@ class Helper(d.Client):
 
     def botOwnerCheck(self, interaction: d.Interaction) -> bool:
         result = interaction.user.id == self.config.adminID
+        if not result:
+            interaction.response.send_message("You do not have permission to do this.", ephemeral=True)
         logger.debug(f"botOwnerCheck for user {interaction.user.name} ({interaction.user.id}) = {result}")
         return result
     
