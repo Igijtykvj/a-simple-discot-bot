@@ -46,7 +46,6 @@ class Helper(d.Client):
     def __init__(self, *, intents=d.Intents.default(), config: Config):
         logger.debug("Creating client")
         self.config = config
-        self.guild = self.get_guild(self.config.guildID) 
 
         intents.message_content = True
         intents.reactions = True
@@ -60,6 +59,7 @@ class Helper(d.Client):
         return result
     
     async def setup_hook(self): 
+        self.guild = self.get_guild(self.config.guildID)
         logger.debug("Setting up slash commands")
         logger.info("Running setup_hook")
         @self.tree.command(name="register", description="Register channel for the bot to send messages to.")
