@@ -4,7 +4,7 @@ import discord as d
 from discord.ext import tasks
 import dataclasses as dc
 
-logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+logging.basicConfig(format="%(asctime)s [%(levelname)s] (%(name)s): %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S",
                     handlers=[logging.FileHandler("bot.log", encoding='utf-8', mode='w'), logging.StreamHandler()],
                     level=logging.DEBUG)
@@ -44,7 +44,7 @@ class Config:
 
 class Helper(d.Client):
     def __init__(self, *, intents=d.Intents.default(), config: Config):
-        logger.info(f"Bot ready as {self.user} (ID: {self.user.id})")
+        logger.debug("Creating client")
         self.config = config
         self.guild = self.get_guild(self.config.guildID) 
 
@@ -59,7 +59,8 @@ class Helper(d.Client):
         logger.debug(f"botOwnerCheck for user {interaction.user.id} = {result}")
         return result
     
-    async def setup_hook(self):
+    async def setup_hook(self): 
+        logger.debug("Setting up slash commands")
         logger.info("Running setup_hook")
         @self.tree.command(name="register", description="Register channel for the bot to send messages to.")
         @d.app_commands.describe(channel="Channel to send messages to.")
@@ -133,7 +134,8 @@ class Helper(d.Client):
         await self.tree.sync(guild=d.Object(id=self.config.guildID))
 
     async def on_ready(self):
-        pass
+        logger.info(f"Bot ready as {self.user} (ID: {self.user.id})")
+        
     
     async def on_pingToggle(self):
         pass
