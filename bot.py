@@ -30,7 +30,8 @@ class Config:
     _filename: str = dc.field(default='botConfig.json', init=False, repr=False, compare=False)
 
     @classmethod
-    def load(cls, filename: str = _filename):
+    def load(cls, filename: str = None):
+        filename = filename or cls._filename.default
         if os.path.exists(filename):
             logger.info(f"Loading config from {filename}")
             with open(filename, 'r', encoding='utf-8') as f:
@@ -48,6 +49,7 @@ class Config:
             obj = cls()
             obj._filename = filename
             return obj
+
 
     def dump(self):
         logger.info(f"Dumping config to {self._filename}")
