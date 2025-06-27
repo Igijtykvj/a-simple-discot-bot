@@ -80,20 +80,20 @@ class Helper(d.Client):
             self.config.channelID = channel.id
             await self.on_channelRegistered(channel)
 
-        @self.tree.command(name="pingToggle", description="Toggle pinging.")
+        @self.tree.command(name="pingtoggle", description="Toggle pinging.")
         @d.app_commands.check(self.botOwnerCheck)
-        async def pingToggle(interaction: d.Interaction):
-            logger.debug(f"Received /pingToggle from {interaction.user}")
+        async def pingtoggle(interaction: d.Interaction):
+            logger.debug(f"Received /pingtoggle from {interaction.user}")
             await interaction.response.send_message(f"Pinging is now {'enabled' if not self.config.isPing else 'disabled'}.")
             logger.info(f"Toggled pinging to {'enabled' if not self.config.isPing else 'disabled'}.")
             self.config.isPing = not self.config.isPing
             await self.on_pingToggle()
 
-        @self.tree.command(name="setPingRole", description="Set role to be pinged.")
+        @self.tree.command(name="setpingrole", description="Set role to be pinged.")
         @d.app_commands.describe(role="Role to be pinged.")
         @d.app_commands.check(self.botOwnerCheck)
-        async def setPingRole(interaction: d.Interaction, role: d.Role):
-            logger.debug(f"Received /setPingRole from {interaction.user} for role {role}")
+        async def setpingrole(interaction: d.Interaction, role: d.Role):
+            logger.debug(f"Received /setpingrole from {interaction.user} for role {role}")
             if role > self.guild.me.top_role:
                 await interaction.response.send_message(f"Role is too high for me to manage. Please set a lower role.")
                 logger.warning(f"Set a role that is too high to manage.")
@@ -103,23 +103,23 @@ class Helper(d.Client):
             self.config.roleID = role.id
             await self.on_roleRegistered()
 
-        @self.tree.command(name="roleToggle", description="Gain/remove ping role.")
-        async def roleToggle(interaction: d.Interaction):
-            logger.debug(f"Received /roleToggle from {interaction.user}")
+        @self.tree.command(name="roletoggle", description="Gain/remove ping role.")
+        async def roletoggle(interaction: d.Interaction):
+            logger.debug(f"Received /roletoggle from {interaction.user}")
             if not self.config.roleID:
                 await interaction.response.send_message(f"Role hasn't been set yet.", ephemeral=True)
-                logger.info(f"{interaction.user.name} tried to use roleToggle but no role has been set.")
+                logger.info(f"{interaction.user.name} tried to use roletoggle but no role has been set.")
                 return
             
             role = self.guild.get_role(self.config.roleID)
             if role is None:
                 await interaction.response.send_message(f"Role has been deleted. Unsetting role. Ask {self.get_user(self.config.adminID).mention} to set a new one.", ephemeral=True)
-                logger.warning(f"{interaction.user.name} tried to use roleToggle but the role has been deleted. Deleting role config.")
+                logger.warning(f"{interaction.user.name} tried to use roletoggle but the role has been deleted. Deleting role config.")
                 self.config.roleID = 0
                 return
             if role > self.guild.me.top_role:
                 await interaction.response.send_message(f"Role is too high for me to manage. Unsetting role. Ask {self.get_user(self.config.adminID).mention} to set a new one.", ephemeral=True)
-                logger.warning(f"{interaction.user.name} tried to use roleToggle but the {role.name} is too high to manage. Deleting role config.")
+                logger.warning(f"{interaction.user.name} tried to use roletoggle but the {role.name} is too high to manage. Deleting role config.")
                 self.config.roleID = 0
                 return
             
