@@ -64,7 +64,7 @@ class Helper(d.Client):
         logger.info("Running setup_hook")
         @self.tree.command(name="register", description="Register channel for the bot to send messages to.")
         @d.app_commands.describe(channel="Channel to send messages to.")
-        @d.app_commands.checks(self.botOwnerCheck)
+        @d.app_commands.check(self.botOwnerCheck)
         async def register(interaction: d.Interaction, channel: d.TextChannel):
             logger.debug(f"Received /register from {interaction.user} for channel {channel}")
             if channel.guild.id != self.config.guildID:
@@ -81,7 +81,7 @@ class Helper(d.Client):
             await self.on_channelRegistered(channel)
 
         @self.tree.command(name="pingToggle", description="Toggle pinging.")
-        @d.app_commands.checks(self.botOwnerCheck)
+        @d.app_commands.check(self.botOwnerCheck)
         async def pingToggle(interaction: d.Interaction):
             logger.debug(f"Received /pingToggle from {interaction.user}")
             await interaction.response.send_message(f"Pinging is now {'enabled' if not self.config.isPing else 'disabled'}.")
@@ -91,8 +91,7 @@ class Helper(d.Client):
 
         @self.tree.command(name="setPingRole", description="Set role to be pinged.")
         @d.app_commands.describe(role="Role to be pinged.")
-        @d.app_commands.checks(self.botOwnerCheck)
-        @d.app_commands.checks(self.config.isPing)
+        @d.app_commands.check(self.botOwnerCheck)
         async def setPingRole(interaction: d.Interaction, role: d.Role):
             logger.debug(f"Received /setPingRole from {interaction.user} for role {role}")
             if role > self.guild.me.top_role:
@@ -170,7 +169,7 @@ class Helper(d.Client):
 
     async def close(self):
         logger.info("Shutting down bot...")
-        await self.bot_offline()
+        await self.on_botOffline()
         await super().close()
         logger.info("Bot shutdown complete.")
 
