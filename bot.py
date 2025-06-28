@@ -269,7 +269,8 @@ class Helper(d.Client):
     def createEmbed(self, status_data: dict, public_ip: str) -> d.Embed:
         if status_data.get('online', False):
             motd = "\n".join(status_data.get('motd', {}).get('clean', ["No MOTD."]))
-            embed = d.Embed(title="Minecraft Server", description=f"```\n{motd}\n```", color=d.Color.green(), thumbnail={"url":f"https://api.mcsrvstat.us/icon/{public_ip}:{self.config.srvport}"})
+            embed = d.Embed(title="Minecraft Server", description=f"```\n{motd}\n```", color=d.Color.green())
+            embed.set_thumbnail(url=f"https://api.mcsrvstat.us/icon/{public_ip}:{self.config.srvport}")
             embed.add_field(name="Status", value=":green_circle: **Online**", inline=True)
             
             players_data = status_data.get('players', {})
